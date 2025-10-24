@@ -122,7 +122,7 @@ func newListCmd() *cobra.Command {
 	flags.StringVar(&afterStr, "after", "", "include sessions starting on/after the given RFC3339 timestamp")
 	flags.StringVar(&beforeStr, "before", "", "include sessions starting on/before the given RFC3339 timestamp")
 	flags.IntVar(&limit, "limit", 0, "limit number of sessions returned (0 means no limit)")
-	flags.StringVar(&formatFlag, "format", "tsv", "output format: tsv or json")
+	flags.StringVar(&formatFlag, "format", "table", "output format: table, plain, or json")
 	flags.BoolVar(&noHeader, "no-header", false, "omit header row for tsv output")
 	flags.IntVar(&summaryWidth, "summary-width", 160, "maximum characters included in the summary column")
 	flags.StringVar(&sessionsDir, "sessions-dir", defaultSessionsDir(), "override the sessions directory")
