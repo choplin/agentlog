@@ -54,7 +54,7 @@ func TestReadSessionMeta_LegacyFormat(t *testing.T) {
 func TestFirstUserSummary(t *testing.T) {
 	path := fixturePath("new", "sample.jsonl")
 
-	summary, count, err := FirstUserSummary(path)
+	summary, count, last, err := FirstUserSummary(path)
 	if err != nil {
 		t.Fatalf("FirstUserSummary returned error: %v", err)
 	}
@@ -64,6 +64,9 @@ func TestFirstUserSummary(t *testing.T) {
 	}
 	if count != 2 {
 		t.Fatalf("unexpected message count: %d", count)
+	}
+	if got := last.Format(time.RFC3339); got != "2025-10-01T12:00:02Z" {
+		t.Fatalf("unexpected last timestamp: %s", got)
 	}
 }
 

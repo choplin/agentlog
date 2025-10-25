@@ -30,6 +30,10 @@ func TestListSessions(t *testing.T) {
 		t.Fatalf("unexpected summary text: %s", res.Summaries[0].Summary)
 	}
 
+	if res.Summaries[0].DurationSeconds != 2 {
+		t.Fatalf("unexpected duration: %d", res.Summaries[0].DurationSeconds)
+	}
+
 	if len(res.Warnings) != 0 {
 		t.Fatalf("expected no warnings, got %d", len(res.Warnings))
 	}
@@ -50,6 +54,10 @@ func TestListSessionsFilters(t *testing.T) {
 
 	if res.Summaries[0].ID != "new-session" {
 		t.Fatalf("unexpected session id: %s", res.Summaries[0].ID)
+	}
+
+	if res.Summaries[0].DurationSeconds == 0 {
+		t.Fatalf("expected duration to be populated")
 	}
 }
 
@@ -77,7 +85,11 @@ func TestListSessionsExactCWD(t *testing.T) {
 		t.Fatalf("expected 1 summary, got %d", len(res.Summaries))
 	}
 
-	if res.Summaries[0].ID != "new-session" {
-		t.Fatalf("unexpected session id: %s", res.Summaries[0].ID)
+	summary := res.Summaries[0]
+	if summary.ID != "new-session" {
+		t.Fatalf("unexpected session id: %s", summary.ID)
+	}
+	if summary.DurationSeconds != 2 {
+		t.Fatalf("unexpected duration: %d", summary.DurationSeconds)
 	}
 }

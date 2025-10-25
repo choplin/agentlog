@@ -45,10 +45,10 @@ func ReadSessionMeta(path string) (*model.SessionMeta, error) {
 
 // FirstUserSummary returns the first user message text (trimmed) and total
 // number of response_item entries found in the session.
-func FirstUserSummary(path string) (summary string, messageCount int, err error) {
+func FirstUserSummary(path string) (summary string, messageCount int, lastTimestamp time.Time, err error) {
 	file, err := os.Open(path)
 	if err != nil {
-		return "", 0, fmt.Errorf("open session file: %w", err)
+		return "", 0, time.Time{}, fmt.Errorf("open session file: %w", err)
 	}
 	defer file.Close()
 
@@ -57,7 +57,11 @@ func FirstUserSummary(path string) (summary string, messageCount int, err error)
 		recBytes := scanner.Bytes()
 		event, err := parseEvent(recBytes)
 		if err != nil {
-			return "", messageCount, err
+			return "", messageCount, lastTimestamp, err
+		}
+
+		if !event.Timestamp.IsZero() && event.Timestamp.After(lastTimestamp) {
+			lastTimestamp = event.Timestamp
 		}
 
 		if event.Kind == "response_item" {
@@ -69,10 +73,10 @@ func FirstUserSummary(path string) (summary string, messageCount int, err error)
 	}
 
 	if err := scanner.Err(); err != nil {
-		return summary, messageCount, fmt.Errorf("scan session: %w", err)
+		return summary, messageCount, lastTimestamp, fmt.Errorf("scan session: %w", err)
 	}
 
-	return summary, messageCount, nil
+	return summary, messageCount, lastTimestamp, nil
 }
 
 // IterateEvents walks through the session JSONL file and calls fn for each

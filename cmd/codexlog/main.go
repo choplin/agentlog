@@ -93,7 +93,6 @@ func newListCmd() *cobra.Command {
 				}
 				opts.ExactCWD = true
 			} else if cwd != "" {
-				// Should not happen due to validation above, but guard anyway.
 				opts.CWD = cwd
 			}
 
@@ -122,7 +121,7 @@ func newListCmd() *cobra.Command {
 	flags.StringVar(&afterStr, "after", "", "include sessions starting on/after the given RFC3339 timestamp")
 	flags.StringVar(&beforeStr, "before", "", "include sessions starting on/before the given RFC3339 timestamp")
 	flags.IntVar(&limit, "limit", 0, "limit number of sessions returned (0 means no limit)")
-	flags.StringVar(&formatFlag, "format", "table", "output format: table, plain, or json")
+	flags.StringVar(&formatFlag, "format", "table", "output format: table, plain, json, or jsonl")
 	flags.BoolVar(&noHeader, "no-header", false, "omit header row for tsv output")
 	flags.IntVar(&summaryWidth, "summary-width", 160, "maximum characters included in the summary column")
 	flags.StringVar(&sessionsDir, "sessions-dir", defaultSessionsDir(), "override the sessions directory")
@@ -207,29 +206,36 @@ func newInfoCmd() *cobra.Command {
 				return err
 			}
 
-			summary, count, err := parser.FirstUserSummary(path)
+			summary, count, lastTimestamp, err := parser.FirstUserSummary(path)
 			if err != nil {
 				return err
 			}
 
+			if lastTimestamp.IsZero() || lastTimestamp.Before(meta.StartedAt) {
+				lastTimestamp = meta.StartedAt
+			}
+			duration := durationSeconds(meta.StartedAt, lastTimestamp)
+
 			payload := struct {
-				SessionID    string `json:"session_id"`
-				JSONLPath    string `json:"jsonl_path"`
-				StartedAt    string `json:"started_at"`
-				CWD          string `json:"cwd"`
-				Originator   string `json:"originator"`
-				CLIVersion   string `json:"cli_version"`
-				MessageCount int    `json:"message_count"`
-				Summary      string `json:"summary"`
+				SessionID       string `json:"session_id"`
+				JSONLPath       string `json:"jsonl_path"`
+				StartedAt       string `json:"started_at"`
+				CWD             string `json:"cwd"`
+				Originator      string `json:"originator"`
+				CLIVersion      string `json:"cli_version"`
+				MessageCount    int    `json:"message_count"`
+				DurationSeconds int    `json:"duration_seconds"`
+				Summary         string `json:"summary"`
 			}{
-				SessionID:    meta.ID,
-				JSONLPath:    path,
-				StartedAt:    meta.StartedAt.Format(time.RFC3339),
-				CWD:          meta.CWD,
-				Originator:   meta.Originator,
-				CLIVersion:   meta.CLIVersion,
-				MessageCount: count,
-				Summary:      summary,
+				SessionID:       meta.ID,
+				JSONLPath:       path,
+				StartedAt:       meta.StartedAt.Format(time.RFC3339),
+				CWD:             meta.CWD,
+				Originator:      meta.Originator,
+				CLIVersion:      meta.CLIVersion,
+				MessageCount:    count,
+				DurationSeconds: duration,
+				Summary:         summary,
 			}
 
 			switch strings.ToLower(formatFlag) {
@@ -246,6 +252,7 @@ func newInfoCmd() *cobra.Command {
 				fmt.Fprintf(out, "Originator: %s\n", payload.Originator)
 				fmt.Fprintf(out, "CLI Version: %s\n", payload.CLIVersion)
 				fmt.Fprintf(out, "Message Count: %d\n", payload.MessageCount)
+				fmt.Fprintf(out, "Duration: %s\n", formatDuration(payload.DurationSeconds))
 				fmt.Fprintf(out, "Summary: %s\n", payload.Summary)
 				return nil
 			default:
@@ -298,4 +305,24 @@ func defaultSessionsDir() string {
 		return ""
 	}
 	return filepath.Join(home, ".codex", "sessions")
+}
+
+func durationSeconds(start, end time.Time) int {
+	if start.IsZero() || end.IsZero() {
+		return 0
+	}
+	if end.Before(start) {
+		return 0
+	}
+	return int(end.Sub(start).Seconds())
+}
+
+func formatDuration(seconds int) string {
+	if seconds <= 0 {
+		return "00:00:00"
+	}
+	h := seconds / 3600
+	m := (seconds % 3600) / 60
+	s := seconds % 60
+	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
 }

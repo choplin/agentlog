@@ -4,14 +4,15 @@ import "time"
 
 // SessionSummary holds lightweight information about a Codex session.
 type SessionSummary struct {
-	ID           string
-	Path         string
-	CWD          string
-	Originator   string
-	CLIVersion   string
-	StartedAt    time.Time
-	Summary      string
-	MessageCount int
+	ID              string
+	Path            string
+	CWD             string
+	Originator      string
+	CLIVersion      string
+	StartedAt       time.Time
+	Summary         string
+	MessageCount    int
+	DurationSeconds int
 }
 
 // SessionMeta represents metadata stored in the session_meta payload.

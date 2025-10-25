@@ -74,7 +74,7 @@ func ListSessions(opts ListOptions) (ListResult, error) {
 			return nil
 		}
 
-		summaryText, count, err := parser.FirstUserSummary(path)
+		summaryText, count, lastTimestamp, err := parser.FirstUserSummary(path)
 		if err != nil {
 			result.Warnings = append(result.Warnings, fmt.Errorf("extract summary %s: %w", path, err))
 			return nil
@@ -84,15 +84,22 @@ func ListSessions(opts ListOptions) (ListResult, error) {
 			summaryText = truncate(summaryText, opts.MaxSummary)
 		}
 
+		if lastTimestamp.IsZero() || lastTimestamp.Before(meta.StartedAt) {
+			lastTimestamp = meta.StartedAt
+		}
+
+		duration := durationSeconds(meta.StartedAt, lastTimestamp)
+
 		result.Summaries = append(result.Summaries, model.SessionSummary{
-			ID:           meta.ID,
-			Path:         path,
-			CWD:          meta.CWD,
-			Originator:   meta.Originator,
-			CLIVersion:   meta.CLIVersion,
-			StartedAt:    meta.StartedAt,
-			Summary:      summaryText,
-			MessageCount: count,
+			ID:              meta.ID,
+			Path:            path,
+			CWD:             meta.CWD,
+			Originator:      meta.Originator,
+			CLIVersion:      meta.CLIVersion,
+			StartedAt:       meta.StartedAt,
+			Summary:         summaryText,
+			MessageCount:    count,
+			DurationSeconds: duration,
 		})
 
 		return nil
@@ -161,4 +168,14 @@ func FindSessionPath(root, id string) (string, error) {
 		return "", err
 	}
 	return "", fmt.Errorf("session id %s not found under %s", id, root)
+}
+
+func durationSeconds(start, end time.Time) int {
+	if start.IsZero() || end.IsZero() {
+		return 0
+	}
+	if end.Before(start) {
+		return 0
+	}
+	return int(end.Sub(start).Seconds())
 }
