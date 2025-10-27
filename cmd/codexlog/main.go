@@ -201,6 +201,7 @@ type infoPayload struct {
 func newInfoCmd() *cobra.Command {
 	var (
 		formatFlag  string
+		summaryMode string
 		sessionsDir string
 	)
 
@@ -228,7 +229,19 @@ func newInfoCmd() *cobra.Command {
 				lastTimestamp = meta.StartedAt
 			}
 			duration := durationSeconds(meta.StartedAt, lastTimestamp)
-			summarySnippet := truncateSummary(summary, 160)
+
+			summaryMode = strings.ToLower(summaryMode)
+			switch summaryMode {
+			case "", "clip":
+			case "full":
+			default:
+				return fmt.Errorf("invalid --summary value: %s", summaryMode)
+			}
+
+			summarySnippet := collapseWhitespace(summary)
+			if summaryMode != "full" {
+				summarySnippet = clipSummary(summarySnippet, 160)
+			}
 
 			payload := infoPayload{
 				SessionID:       meta.ID,
@@ -260,6 +273,7 @@ func newInfoCmd() *cobra.Command {
 
 	flags := cmd.Flags()
 	flags.StringVar(&formatFlag, "format", "text", "output format: text or json")
+	flags.StringVar(&summaryMode, "summary", "clip", "summary display: clip or full")
 	flags.StringVar(&sessionsDir, "sessions-dir", defaultSessionsDir(), "override the sessions directory")
 
 	return cmd
@@ -324,21 +338,6 @@ func formatDuration(seconds int) string {
 	return fmt.Sprintf("%02d:%02d:%02d", h, m, s)
 }
 
-func truncateSummary(text string, max int) string {
-	if max <= 0 {
-		return ""
-	}
-	collapsed := strings.Join(strings.Fields(strings.TrimSpace(text)), " ")
-	runes := []rune(collapsed)
-	if len(runes) <= max {
-		return string(runes)
-	}
-	if max == 1 {
-		return "…"
-	}
-	return string(runes[:max-1]) + "…"
-}
-
 func renderInfoText(out io.Writer, payload infoPayload, summarySnippet string) {
 	const labelWidth = 14
 	writeKV(out, labelWidth, "Session ID", payload.SessionID)
@@ -355,4 +354,22 @@ func renderInfoText(out io.Writer, payload infoPayload, summarySnippet string) {
 
 func writeKV(out io.Writer, width int, label string, value string) {
 	fmt.Fprintf(out, "%-*s: %s\n", width, label, value)
+}
+
+func collapseWhitespace(text string) string {
+	return strings.Join(strings.Fields(strings.TrimSpace(text)), " ")
+}
+
+func clipSummary(text string, max int) string {
+	if max <= 0 {
+		return ""
+	}
+	runes := []rune(text)
+	if len(runes) <= max {
+		return text
+	}
+	if max == 1 {
+		return "…"
+	}
+	return string(runes[:max-1]) + "…"
 }
