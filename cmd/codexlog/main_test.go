@@ -28,14 +28,6 @@ func TestCollapseWhitespace(t *testing.T) {
 	}
 }
 
-func TestLimitEvents(t *testing.T) {
-	events := []model.Event{{}, {}, {}, {}}
-	limited := limitEvents(events, 2)
-	if len(limited) != 2 {
-		t.Fatalf("expected 2 events, got %d", len(limited))
-	}
-}
-
 func TestPrintEvent(t *testing.T) {
 	event := model.Event{
 		Kind:      model.EntryTypeResponseItem,

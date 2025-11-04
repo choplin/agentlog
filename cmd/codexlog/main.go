@@ -177,43 +177,96 @@ func newViewCmd() *cobra.Command {
 				return err
 			}
 
-			var events []model.Event
-			err = parser.IterateEvents(path, func(event model.Event) error {
-				if event.Kind == model.EntryTypeSessionMeta {
-					return nil
-				}
-				if eventMatchesFilters(event, filters) {
-					events = append(events, event)
-				}
-				return nil
-			})
-			if err != nil {
-				return err
+			processEvents := func(fn func(model.Event) error) error {
+				return parser.IterateEvents(path, func(event model.Event) error {
+					if event.Kind == model.EntryTypeSessionMeta {
+						return nil
+					}
+					if !eventMatchesFilters(event, filters) {
+						return nil
+					}
+					return fn(event)
+				})
 			}
-
-			events = limitEvents(events, maxEvents)
 
 			switch formatMode {
 			case "", "text":
 				useColor := resolveColorChoice(out, forceColor, forceNoColor)
-				for idx, event := range events {
-					printEvent(out, event, idx+1, wrap, useColor)
-					if idx < len(events)-1 {
+				if maxEvents == 0 {
+					count := 0
+					return processEvents(func(event model.Event) error {
+						if count > 0 {
+							fmt.Fprintln(out)
+						}
+						printEvent(out, event, count+1, wrap, useColor)
+						count++
+						return nil
+					})
+				}
+				ring := newEventRing(maxEvents)
+				if err := processEvents(func(event model.Event) error {
+					ring.push(event)
+					return nil
+				}); err != nil {
+					return err
+				}
+				for idx, event := range ring.slice() {
+					if idx > 0 {
 						fmt.Fprintln(out)
 					}
+					printEvent(out, event, idx+1, wrap, useColor)
 				}
 				return nil
+
 			case "raw":
-				for _, event := range events {
-					if _, err := fmt.Fprintln(out, event.Raw); err != nil {
+				if maxEvents == 0 {
+					return processEvents(func(event model.Event) error {
+						_, err := fmt.Fprintln(out, event.Raw)
 						return err
-					}
+					})
+				}
+				ring := newEventRing(maxEvents)
+				if err := processEvents(func(event model.Event) error {
+					ring.push(event)
+					return nil
+				}); err != nil {
+					return err
+				}
+				for _, event := range ring.slice() {
+					fmt.Fprintln(out, event.Raw)
 				}
 				return nil
+
 			case "chat":
 				colorEnabled := resolveColorChoice(out, forceColor, forceNoColor)
 				outFile, outIsFile := out.(*os.File)
 				width := determineWidth(outFile, wrap)
+
+				var events []model.Event
+				if maxEvents > 0 {
+					ring := newEventRing(maxEvents)
+					if err := processEvents(func(event model.Event) error {
+						ring.push(event)
+						return nil
+					}); err != nil {
+						return err
+					}
+					events = ring.slice()
+				} else {
+					collected := make([]model.Event, 0)
+					if err := processEvents(func(event model.Event) error {
+						collected = append(collected, event)
+						return nil
+					}); err != nil {
+						return err
+					}
+					events = collected
+				}
+
+				if len(events) == 0 {
+					return nil
+				}
+
 				lines := renderChatTranscript(events, width, colorEnabled)
 				if len(lines) == 0 {
 					return nil
@@ -222,6 +275,7 @@ func newViewCmd() *cobra.Command {
 					return pipeThroughPager(lines, colorEnabled)
 				}
 				return writeLines(out, lines)
+
 			default:
 				return fmt.Errorf("unsupported format: %s", formatFlag)
 			}
@@ -432,13 +486,6 @@ func clipSummary(text string, max int) string {
 	return string(runes[:max-1]) + "…"
 }
 
-func limitEvents(events []model.Event, max int) []model.Event {
-	if max <= 0 || len(events) <= max {
-		return events
-	}
-	return events[len(events)-max:]
-}
-
 type viewFilters struct {
 	entryTypes   map[model.EntryType]struct{}
 	payloadTypes map[model.PayloadType]struct{}
@@ -601,6 +648,43 @@ func eventMatchesFilters(event model.Event, filters viewFilters) bool {
 	}
 
 	return true
+}
+
+type eventRing struct {
+	data   []model.Event
+	start  int
+	length int
+}
+
+func newEventRing(capacity int) *eventRing {
+	if capacity <= 0 {
+		return &eventRing{}
+	}
+	return &eventRing{data: make([]model.Event, capacity)}
+}
+
+func (r *eventRing) push(event model.Event) {
+	if len(r.data) == 0 {
+		return
+	}
+	idx := (r.start + r.length) % len(r.data)
+	r.data[idx] = event
+	if r.length < len(r.data) {
+		r.length++
+		return
+	}
+	r.start = (r.start + 1) % len(r.data)
+}
+
+func (r *eventRing) slice() []model.Event {
+	if r.length == 0 {
+		return nil
+	}
+	result := make([]model.Event, r.length)
+	for i := 0; i < r.length; i++ {
+		result[i] = r.data[(r.start+i)%len(r.data)]
+	}
+	return result
 }
 
 func determineWidth(out *os.File, wrap int) int {
