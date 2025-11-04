@@ -134,6 +134,7 @@ func newViewCmd() *cobra.Command {
 		entryTypeArg   string
 		payloadTypeArg string
 		payloadRoleArg string
+		allFilter      bool
 		raw            bool
 		wrap           int
 		maxEvents      int
@@ -158,6 +159,11 @@ func newViewCmd() *cobra.Command {
 				return errors.New("--color and --no-color cannot be used together")
 			}
 
+			// Check for exclusive flag usage
+			if allFilter && (entryTypeArg != "" || payloadTypeArg != "" || payloadRoleArg != "") {
+				return errors.New("--all cannot be used with -E, -T, or -R flags")
+			}
+
 			outFile, _ := out.(*os.File)
 			return view.Run(view.Options{
 				Path:           path,
@@ -167,6 +173,7 @@ func newViewCmd() *cobra.Command {
 				EntryTypeArg:   entryTypeArg,
 				PayloadTypeArg: payloadTypeArg,
 				PayloadRoleArg: payloadRoleArg,
+				AllFilter:      allFilter,
 				ForceColor:     forceColor,
 				ForceNoColor:   forceNoColor,
 				RawFile:        raw,
@@ -177,9 +184,10 @@ func newViewCmd() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&entryTypeArg, "entry-type", "E", "", "comma-separated entry types to include (default: all)")
-	flags.StringVarP(&payloadTypeArg, "payload-type", "T", "", "comma-separated payload types to include (default: all)")
+	flags.StringVarP(&entryTypeArg, "entry-type", "E", "", "comma-separated entry types to include (default: response_item)")
+	flags.StringVarP(&payloadTypeArg, "payload-type", "T", "", "comma-separated payload types to include (default: message)")
 	flags.StringVarP(&payloadRoleArg, "payload-role", "R", "", "comma-separated payload roles to include (default: user,assistant; use 'all' for every role)")
+	flags.BoolVar(&allFilter, "all", false, "show all entries including session_meta (overrides -E, -T, and -R)")
 	flags.BoolVar(&raw, "raw", false, "output raw JSONL without formatting")
 	flags.IntVar(&wrap, "wrap", 0, "wrap message body at the given column width")
 	flags.IntVar(&maxEvents, "max", 0, "show only the most recent N events (0 means no limit)")

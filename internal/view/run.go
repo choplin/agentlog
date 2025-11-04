@@ -26,6 +26,7 @@ type Options struct {
 	EntryTypeArg    string
 	PayloadTypeArg  string
 	PayloadRoleArg  string
+	AllFilter       bool
 	ForceColor      bool
 	ForceNoColor    bool
 	RawFile         bool
@@ -43,7 +44,7 @@ func Run(opts Options) error {
 		return copyFile(opts.Out, opts.Path)
 	}
 
-	filters, err := buildViewFilters(opts.EntryTypeArg, opts.PayloadTypeArg, opts.PayloadRoleArg)
+	filters, err := buildViewFilters(opts.AllFilter, opts.EntryTypeArg, opts.PayloadTypeArg, opts.PayloadRoleArg)
 	if err != nil {
 		return err
 	}
@@ -59,7 +60,8 @@ func Run(opts Options) error {
 
 	processEvents := func(fn func(model.Event) error) error {
 		return parser.IterateEvents(opts.Path, func(event model.Event) error {
-			if event.Kind == model.EntryTypeSessionMeta {
+			// Skip session_meta unless --all is specified
+			if !opts.AllFilter && event.Kind == model.EntryTypeSessionMeta {
 				return nil
 			}
 			if !eventMatchesFilters(event, filters) {
@@ -166,8 +168,17 @@ type viewFilters struct {
 	payloadRoles map[model.PayloadRole]struct{}
 }
 
-func buildViewFilters(entryArg, payloadTypeArg, payloadRoleArg string) (viewFilters, error) {
+func buildViewFilters(allFilter bool, entryArg, payloadTypeArg, payloadRoleArg string) (viewFilters, error) {
 	var filters viewFilters
+
+	// If --all is specified, disable all filters
+	if allFilter {
+		return viewFilters{
+			entryTypes:   nil,
+			payloadTypes: nil,
+			payloadRoles: nil,
+		}, nil
+	}
 
 	entryFilter, entryProvided, err := parseEntryTypeArg(entryArg)
 	if err != nil {

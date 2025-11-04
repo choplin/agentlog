@@ -12,7 +12,7 @@ import (
 )
 
 func TestBuildViewFiltersDefaults(t *testing.T) {
-	filters, err := buildViewFilters("", "", "")
+	filters, err := buildViewFilters(false, "", "", "")
 	if err != nil {
 		t.Fatalf("buildViewFilters returned error: %v", err)
 	}
