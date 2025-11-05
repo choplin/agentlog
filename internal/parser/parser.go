@@ -173,6 +173,28 @@ type legacyMeta struct {
 	CLIVersion string `json:"cli_version"`
 }
 
+type functionCallPayload struct {
+	Type      string          `json:"type"`
+	Role      string          `json:"role"`
+	Name      string          `json:"name"`
+	Arguments string          `json:"arguments"`
+	Content   json.RawMessage `json:"content"`
+}
+
+type eventMsgPayload struct {
+	Type         string `json:"type"`
+	Content      string `json:"content"`
+	InputTokens  int    `json:"input_tokens"`
+	OutputTokens int    `json:"output_tokens"`
+	Reasoning    string `json:"reasoning"`
+	Message      string `json:"message"`
+}
+
+type turnContextPayload struct {
+	TurnID  string `json:"turn_id"`
+	Context string `json:"context"`
+}
+
 func tryParseMeta(raw []byte) (*model.SessionMeta, bool, error) {
 	event, err := parseEvent(raw)
 	if err != nil {
@@ -267,20 +289,67 @@ func parseEvent(raw []byte) (model.Event, error) {
 			{Type: "id", Text: payload.ID},
 		}
 	case model.EntryTypeResponseItem:
-		var payload responsePayload
+		var payload functionCallPayload
 		if err := json.Unmarshal(rec.Payload, &payload); err != nil {
 			return model.Event{}, fmt.Errorf("unmarshal response payload: %w", err)
 		}
 		event.Role = model.PayloadRole(payload.Role)
 		event.PayloadType = payload.Type
-		event.Content = decodeContentBlocks(payload.Content)
-	case model.EntryTypeEventMsg, model.EntryTypeTurnContext:
-		var payload responsePayload
+
+		// Handle function_call and custom_tool_call types
+		if payload.Type == "function_call" || payload.Type == "custom_tool_call" {
+			if payload.Name != "" {
+				event.Content = []model.ContentBlock{
+					{Type: "function_name", Text: payload.Name},
+					{Type: "function_arguments", Text: payload.Arguments},
+				}
+			} else {
+				event.Content = decodeContentBlocks(payload.Content)
+			}
+		} else {
+			event.Content = decodeContentBlocks(payload.Content)
+		}
+	case model.EntryTypeEventMsg:
+		var payload eventMsgPayload
 		if err := json.Unmarshal(rec.Payload, &payload); err != nil {
-			return model.Event{}, fmt.Errorf("unmarshal %s payload: %w", entryType, err)
+			return model.Event{}, fmt.Errorf("unmarshal event_msg payload: %w", err)
 		}
 		event.PayloadType = payload.Type
-		event.Content = decodeContentBlocks(rec.Payload)
+
+		// Build content based on event_msg type
+		var blocks []model.ContentBlock
+		switch payload.Type {
+		case "user_message", "agent_message":
+			text := payload.Content
+			if text == "" {
+				text = payload.Message
+			}
+			if text != "" {
+				blocks = append(blocks, model.ContentBlock{Type: "text", Text: text})
+			}
+		case "token_count":
+			text := fmt.Sprintf("Tokens: %d in / %d out", payload.InputTokens, payload.OutputTokens)
+			blocks = append(blocks, model.ContentBlock{Type: "text", Text: text})
+		case "agent_reasoning":
+			if payload.Reasoning != "" {
+				blocks = append(blocks, model.ContentBlock{Type: "text", Text: payload.Reasoning})
+			}
+		case "turn_aborted":
+			blocks = append(blocks, model.ContentBlock{Type: "text", Text: "Turn aborted"})
+		default:
+			// Fallback to JSON for unknown event_msg types
+			blocks = decodeContentBlocks(rec.Payload)
+		}
+		event.Content = blocks
+	case model.EntryTypeTurnContext:
+		var payload turnContextPayload
+		if err := json.Unmarshal(rec.Payload, &payload); err != nil {
+			return model.Event{}, fmt.Errorf("unmarshal turn_context payload: %w", err)
+		}
+		event.PayloadType = "turn_context"
+		event.Content = []model.ContentBlock{
+			{Type: "text", Text: fmt.Sprintf("Turn: %s - %s", payload.TurnID, payload.Context)},
+		}
 	default:
 		// Pass through unknown payloads as raw JSON.
 		event.Content = decodeContentBlocks(rec.Payload)

@@ -60,6 +60,17 @@ func renderBlocks(blocks []model.ContentBlock, wrapWidth int) string {
 			parts = append(parts, wrapBody(strings.TrimSpace(block.Text), wrapWidth))
 		case "json":
 			parts = append(parts, formatJSON(block.Text))
+		case "function_name":
+			parts = append(parts, fmt.Sprintf("Function: %s", block.Text))
+		case "function_arguments":
+			// Try to format arguments as JSON if possible
+			formatted := formatJSON(block.Text)
+			if formatted == block.Text {
+				// Not valid JSON, show as-is
+				parts = append(parts, fmt.Sprintf("Arguments: %s", block.Text))
+			} else {
+				parts = append(parts, fmt.Sprintf("Arguments:\n%s", formatted))
+			}
 		default:
 			prefix := fmt.Sprintf("[%s] ", block.Type)
 			parts = append(parts, prefix+wrapBody(strings.TrimSpace(block.Text), wrapWidth))
