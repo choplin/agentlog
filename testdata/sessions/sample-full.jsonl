@@ -1,16 +1,16 @@
 {"timestamp":"2025-11-05T10:00:00Z","type":"session_meta","payload":{"id":"test-full-session","timestamp":"2025-11-05T10:00:00Z","cwd":"/Users/test/project","originator":"codex_cli","cli_version":"1.0.0"}}
 {"timestamp":"2025-11-05T10:00:01Z","type":"event_msg","payload":{"type":"user_message","content":"Starting new conversation"}}
 {"timestamp":"2025-11-05T10:00:02Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"text","text":"Please help me implement a feature"}]}}
-{"timestamp":"2025-11-05T10:00:03Z","type":"event_msg","payload":{"type":"token_count","input_tokens":15,"output_tokens":0}}
+{"timestamp":"2025-11-05T10:00:03Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":15,"cached_input_tokens":0,"output_tokens":0,"reasoning_output_tokens":0,"total_tokens":15},"last_token_usage":{"input_tokens":15,"cached_input_tokens":0,"output_tokens":0,"reasoning_output_tokens":0,"total_tokens":15}}}}
 {"timestamp":"2025-11-05T10:00:04Z","type":"response_item","payload":{"type":"reasoning","role":"assistant","content":[{"type":"text","text":"I need to understand the requirements first"}]}}
 {"timestamp":"2025-11-05T10:00:05Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"text","text":"I'll help you implement that feature. Let me start by reading the codebase."}]}}
-{"timestamp":"2025-11-05T10:00:06Z","type":"event_msg","payload":{"type":"agent_reasoning","reasoning":"Need to explore project structure"}}
+{"timestamp":"2025-11-05T10:00:06Z","type":"event_msg","payload":{"type":"agent_reasoning","text":"**Exploring project structure**"}}
 {"timestamp":"2025-11-05T10:00:07Z","type":"response_item","payload":{"type":"function_call","role":"assistant","name":"Read","arguments":"{\"file_path\":\"/Users/test/project/main.go\"}"}}
 {"timestamp":"2025-11-05T10:00:08Z","type":"response_item","payload":{"type":"function_call_output","role":"tool","content":[{"type":"text","text":"package main\n\nfunc main() {\n\tprintln(\"Hello\")\n}"}]}}
-{"timestamp":"2025-11-05T10:00:09Z","type":"event_msg","payload":{"type":"token_count","input_tokens":15,"output_tokens":45}}
+{"timestamp":"2025-11-05T10:00:09Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":15,"cached_input_tokens":5,"output_tokens":45,"reasoning_output_tokens":10,"total_tokens":60},"last_token_usage":{"input_tokens":15,"cached_input_tokens":5,"output_tokens":45,"reasoning_output_tokens":10,"total_tokens":60}}}}
 {"timestamp":"2025-11-05T10:00:10Z","type":"turn_context","payload":{"turn_id":"turn-001","context":"initial exploration"}}
 {"timestamp":"2025-11-05T10:00:11Z","type":"response_item","payload":{"type":"message","role":"user","content":[{"type":"text","text":"What did you find?"}]}}
 {"timestamp":"2025-11-05T10:00:12Z","type":"event_msg","payload":{"type":"agent_message","message":"Analyzing codebase structure"}}
 {"timestamp":"2025-11-05T10:00:13Z","type":"response_item","payload":{"type":"message","role":"assistant","content":[{"type":"text","text":"I found a simple Go main package. Let me implement the feature."}]}}
-{"timestamp":"2025-11-05T10:00:14Z","type":"event_msg","payload":{"type":"token_count","input_tokens":20,"output_tokens":30}}
+{"timestamp":"2025-11-05T10:00:14Z","type":"event_msg","payload":{"type":"token_count","info":{"total_token_usage":{"input_tokens":20,"cached_input_tokens":0,"output_tokens":30,"reasoning_output_tokens":0,"total_tokens":50},"last_token_usage":{"input_tokens":20,"cached_input_tokens":0,"output_tokens":30,"reasoning_output_tokens":0,"total_tokens":50}}}}
 {"timestamp":"2025-11-05T10:00:15Z","type":"response_item","payload":{"type":"message","role":"system","content":[{"type":"text","text":"Tool execution completed"}]}}

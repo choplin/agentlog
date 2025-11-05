@@ -56,7 +56,7 @@ func renderBlocks(blocks []model.ContentBlock, wrapWidth int) string {
 	parts := make([]string, 0, len(blocks))
 	for _, block := range blocks {
 		switch block.Type {
-		case "input_text", "output_text", "text":
+		case "input_text", "output_text", "text", "summary_text":
 			parts = append(parts, wrapBody(strings.TrimSpace(block.Text), wrapWidth))
 		case "json":
 			parts = append(parts, formatJSON(block.Text))

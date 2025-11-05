@@ -111,7 +111,12 @@ func roleLabel(event model.Event) string {
 		return string(event.Role)
 	}
 	if event.Kind != "" {
-		return string(event.Kind)
+		kind := string(event.Kind)
+		// For event_msg and turn_context, show the specific type
+		if (kind == "event_msg" || kind == "turn_context") && event.PayloadType != "" {
+			return kind + ": " + event.PayloadType
+		}
+		return kind
 	}
 	if event.PayloadType != "" {
 		return event.PayloadType

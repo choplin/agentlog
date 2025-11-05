@@ -154,12 +154,6 @@ type sessionMetaPayload struct {
 	CLIVersion string `json:"cli_version"`
 }
 
-type responsePayload struct {
-	Type    string          `json:"type"`
-	Role    string          `json:"role"`
-	Content json.RawMessage `json:"content"`
-}
-
 type contentBlock struct {
 	Type string `json:"type"`
 	Text string `json:"text"`
@@ -179,20 +173,38 @@ type functionCallPayload struct {
 	Name      string          `json:"name"`
 	Arguments string          `json:"arguments"`
 	Content   json.RawMessage `json:"content"`
+	Summary   json.RawMessage `json:"summary"`
+}
+
+type tokenUsage struct {
+	InputTokens         int `json:"input_tokens"`
+	CachedInputTokens   int `json:"cached_input_tokens"`
+	OutputTokens        int `json:"output_tokens"`
+	ReasoningTokens     int `json:"reasoning_output_tokens"`
+	TotalTokens         int `json:"total_tokens"`
+}
+
+type tokenCountInfo struct {
+	TotalTokenUsage tokenUsage `json:"total_token_usage"`
+	LastTokenUsage  tokenUsage `json:"last_token_usage"`
 }
 
 type eventMsgPayload struct {
-	Type         string `json:"type"`
-	Content      string `json:"content"`
-	InputTokens  int    `json:"input_tokens"`
-	OutputTokens int    `json:"output_tokens"`
-	Reasoning    string `json:"reasoning"`
-	Message      string `json:"message"`
+	Type    string          `json:"type"`
+	Content string          `json:"content"`
+	Text    string          `json:"text"`
+	Message string          `json:"message"`
+	Info    *tokenCountInfo `json:"info"`
 }
 
 type turnContextPayload struct {
-	TurnID  string `json:"turn_id"`
-	Context string `json:"context"`
+	TurnID          string `json:"turn_id"`
+	Context         string `json:"context"`
+	CWD             string `json:"cwd"`
+	Model           string `json:"model"`
+	Effort          string `json:"effort"`
+	Summary         string `json:"summary"`
+	ApprovalPolicy  string `json:"approval_policy"`
 }
 
 func tryParseMeta(raw []byte) (*model.SessionMeta, bool, error) {
@@ -308,6 +320,10 @@ func parseEvent(raw []byte) (model.Event, error) {
 			}
 		} else {
 			event.Content = decodeContentBlocks(payload.Content)
+			// If content is empty or null, try summary (for encrypted reasoning)
+			if len(event.Content) == 0 && len(payload.Summary) > 0 {
+				event.Content = decodeContentBlocks(payload.Summary)
+			}
 		}
 	case model.EntryTypeEventMsg:
 		var payload eventMsgPayload
@@ -328,11 +344,22 @@ func parseEvent(raw []byte) (model.Event, error) {
 				blocks = append(blocks, model.ContentBlock{Type: "text", Text: text})
 			}
 		case "token_count":
-			text := fmt.Sprintf("Tokens: %d in / %d out", payload.InputTokens, payload.OutputTokens)
-			blocks = append(blocks, model.ContentBlock{Type: "text", Text: text})
+			if payload.Info != nil {
+				usage := payload.Info.TotalTokenUsage
+				text := fmt.Sprintf("Tokens: %d in / %d out", usage.InputTokens, usage.OutputTokens)
+				if usage.CachedInputTokens > 0 {
+					text += fmt.Sprintf(" (%d cached)", usage.CachedInputTokens)
+				}
+				if usage.ReasoningTokens > 0 {
+					text += fmt.Sprintf(" [%d reasoning]", usage.ReasoningTokens)
+				}
+				blocks = append(blocks, model.ContentBlock{Type: "text", Text: text})
+			} else {
+				blocks = append(blocks, model.ContentBlock{Type: "text", Text: "Token usage unavailable"})
+			}
 		case "agent_reasoning":
-			if payload.Reasoning != "" {
-				blocks = append(blocks, model.ContentBlock{Type: "text", Text: payload.Reasoning})
+			if payload.Text != "" {
+				blocks = append(blocks, model.ContentBlock{Type: "text", Text: payload.Text})
 			}
 		case "turn_aborted":
 			blocks = append(blocks, model.ContentBlock{Type: "text", Text: "Turn aborted"})
@@ -347,8 +374,31 @@ func parseEvent(raw []byte) (model.Event, error) {
 			return model.Event{}, fmt.Errorf("unmarshal turn_context payload: %w", err)
 		}
 		event.PayloadType = "turn_context"
+
+		// Build content based on available fields
+		var text string
+		if payload.TurnID != "" && payload.Context != "" {
+			text = fmt.Sprintf("Turn: %s - %s", payload.TurnID, payload.Context)
+		} else {
+			// Use model and effort info instead
+			parts := []string{}
+			if payload.Model != "" {
+				parts = append(parts, fmt.Sprintf("Model: %s", payload.Model))
+			}
+			if payload.Effort != "" {
+				parts = append(parts, fmt.Sprintf("Effort: %s", payload.Effort))
+			}
+			if payload.CWD != "" {
+				parts = append(parts, fmt.Sprintf("CWD: %s", payload.CWD))
+			}
+			if len(parts) > 0 {
+				text = strings.Join(parts, ", ")
+			} else {
+				text = "Turn context"
+			}
+		}
 		event.Content = []model.ContentBlock{
-			{Type: "text", Text: fmt.Sprintf("Turn: %s - %s", payload.TurnID, payload.Context)},
+			{Type: "text", Text: text},
 		}
 	default:
 		// Pass through unknown payloads as raw JSON.
