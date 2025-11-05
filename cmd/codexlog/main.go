@@ -18,9 +18,12 @@ import (
 	"github.com/spf13/cobra"
 )
 
+var version = "dev"
+
 var rootCmd = &cobra.Command{
-	Use:   "codexlog",
-	Short: "Browse Codex CLI session logs",
+	Use:     "codexlog",
+	Short:   "Browse, search, and analyze Codex CLI sessions",
+	Version: version,
 }
 
 func init() {
