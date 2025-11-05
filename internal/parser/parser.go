@@ -172,6 +172,7 @@ type functionCallPayload struct {
 	Role      string          `json:"role"`
 	Name      string          `json:"name"`
 	Arguments string          `json:"arguments"`
+	Output    string          `json:"output"`
 	Content   json.RawMessage `json:"content"`
 	Summary   json.RawMessage `json:"summary"`
 }
@@ -314,6 +315,15 @@ func parseEvent(raw []byte) (model.Event, error) {
 				event.Content = []model.ContentBlock{
 					{Type: "function_name", Text: payload.Name},
 					{Type: "function_arguments", Text: payload.Arguments},
+				}
+			} else {
+				event.Content = decodeContentBlocks(payload.Content)
+			}
+		} else if payload.Type == "function_call_output" || payload.Type == "custom_tool_call_output" {
+			// Handle function_call_output and custom_tool_call_output
+			if payload.Output != "" {
+				event.Content = []model.ContentBlock{
+					{Type: "function_output", Text: payload.Output},
 				}
 			} else {
 				event.Content = decodeContentBlocks(payload.Content)

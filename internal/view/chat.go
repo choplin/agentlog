@@ -31,7 +31,7 @@ func renderChatTranscript(events []model.Event, width int, useColor bool) []stri
 }
 
 func renderChatBubble(event model.Event, totalWidth int, padding int, useColor bool) []string {
-	role := strings.ToLower(roleLabel(event))
+	displayRole := strings.ToLower(roleLabel(event))
 	bodyLines := format.RenderEventLines(event, 0)
 
 	maxContentWidth := totalWidth - padding*2 - 10
@@ -46,7 +46,7 @@ func renderChatBubble(event model.Event, totalWidth int, padding int, useColor b
 		}
 	}
 
-	headerText, headerLabel, headerTime := chatHeader(role, event.Timestamp)
+	headerText, headerLabel, headerTime := chatHeader(displayRole, event.Timestamp)
 	content := wrapLines(append([]string{headerText}, bodyLines...), maxContentWidth)
 	maxLineWidth := contentMaxWidth(content)
 
@@ -55,12 +55,14 @@ func renderChatBubble(event model.Event, totalWidth int, padding int, useColor b
 		bubbleWidth = maxContentWidth
 	}
 
-	align := alignmentForRole(role)
+	// Use raw role/kind for alignment and color, not the display label
+	rawRole := extractRawRole(event)
+	align := alignmentForRole(rawRole)
 	leftPad := computeLeftPad(totalWidth, bubbleWidth, padding, align)
 
 	if useColor && len(content) > 0 {
 		colored := fmt.Sprintf("%s · %s",
-			colorize(true, roleColor(role), headerLabel),
+			colorize(true, roleColor(rawRole), headerLabel),
 			colorize(true, ansiTimestamp, headerTime),
 		)
 		content[0] = strings.Replace(content[0], headerText, colored, 1)
@@ -108,15 +110,35 @@ func chatHeader(role string, ts time.Time) (header string, label string, timeTex
 
 func roleLabel(event model.Event) string {
 	if event.Role != "" {
-		return string(event.Role)
+		role := string(event.Role)
+		// For response_item, show the specific type
+		if event.PayloadType != "" {
+			return role + ": " + event.PayloadType
+		}
+		return role
 	}
 	if event.Kind != "" {
 		kind := string(event.Kind)
-		// For event_msg and turn_context, show the specific type
-		if (kind == "event_msg" || kind == "turn_context") && event.PayloadType != "" {
+		// For event_msg, turn_context, and response_item, show the specific type
+		if (kind == "event_msg" || kind == "turn_context" || kind == "response_item") && event.PayloadType != "" {
 			return kind + ": " + event.PayloadType
 		}
 		return kind
+	}
+	if event.PayloadType != "" {
+		return event.PayloadType
+	}
+	return "event"
+}
+
+// extractRawRole returns the base role/kind for alignment and color purposes,
+// without the payload type suffix.
+func extractRawRole(event model.Event) string {
+	if event.Role != "" {
+		return string(event.Role)
+	}
+	if event.Kind != "" {
+		return string(event.Kind)
 	}
 	if event.PayloadType != "" {
 		return event.PayloadType

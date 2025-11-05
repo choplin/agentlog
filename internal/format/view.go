@@ -71,6 +71,15 @@ func renderBlocks(blocks []model.ContentBlock, wrapWidth int) string {
 			} else {
 				parts = append(parts, fmt.Sprintf("Arguments:\n%s", formatted))
 			}
+		case "function_output":
+			// Try to format output as JSON if possible
+			formatted := formatJSON(block.Text)
+			if formatted == block.Text {
+				// Not valid JSON, show as-is
+				parts = append(parts, fmt.Sprintf("Output: %s", block.Text))
+			} else {
+				parts = append(parts, fmt.Sprintf("Output:\n%s", formatted))
+			}
 		default:
 			prefix := fmt.Sprintf("[%s] ", block.Type)
 			parts = append(parts, prefix+wrapBody(strings.TrimSpace(block.Text), wrapWidth))
