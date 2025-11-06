@@ -45,6 +45,7 @@ checksum:
 
 changelog:
   sort: asc
+  use: github
   filters:
     exclude:
       - '^docs:'
@@ -52,6 +53,32 @@ changelog:
       - '^chore:'
       - Merge pull request
       - Merge branch
+  groups:
+    - title: Features
+      regexp: '^feat.*'
+      order: 0
+    - title: Bug Fixes
+      regexp: '^fix.*'
+      order: 1
+    - title: Others
+      order: 999
+
+release:
+  footer: |
+    ## Installation
+
+    ### Homebrew
+    ```bash
+    brew install choplin/tap/codexlog
+    ```
+
+    ### Go Install
+    ```bash
+    go install github.com/choplin/codexlog/cmd/codexlog@{{ .Tag }}
+    ```
+
+    ### Binary Download
+    Download the appropriate binary for your platform from the assets below.
 
 brews:
   - repository:
