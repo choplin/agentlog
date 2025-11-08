@@ -12,9 +12,11 @@ import (
 type EntryType string
 
 const (
-	EntryTypeUser      EntryType = "user"
-	EntryTypeAssistant EntryType = "assistant"
-	EntryTypeSummary   EntryType = "summary"
+	EntryTypeUser                EntryType = "user"
+	EntryTypeAssistant           EntryType = "assistant"
+	EntryTypeSummary             EntryType = "summary"
+	EntryTypeFileHistorySnapshot EntryType = "file-history-snapshot"
+	EntryTypeSystem              EntryType = "system"
 )
 
 // ContentBlockType represents the "type" field in content blocks.
