@@ -25,13 +25,13 @@ type sessionSummary struct {
 	durationSeconds int
 }
 
-func (s *sessionSummary) GetID() string              { return s.id }
-func (s *sessionSummary) GetPath() string            { return s.path }
-func (s *sessionSummary) GetCWD() string             { return s.cwd }
-func (s *sessionSummary) GetStartedAt() time.Time    { return s.startedAt }
-func (s *sessionSummary) GetSummary() string         { return s.summary }
-func (s *sessionSummary) GetMessageCount() int       { return s.messageCount }
-func (s *sessionSummary) GetDurationSeconds() int    { return s.durationSeconds }
+func (s *sessionSummary) GetID() string           { return s.id }
+func (s *sessionSummary) GetPath() string         { return s.path }
+func (s *sessionSummary) GetCWD() string          { return s.cwd }
+func (s *sessionSummary) GetStartedAt() time.Time { return s.startedAt }
+func (s *sessionSummary) GetSummary() string      { return s.summary }
+func (s *sessionSummary) GetMessageCount() int    { return s.messageCount }
+func (s *sessionSummary) GetDurationSeconds() int { return s.durationSeconds }
 
 // ListOptions controls how sessions are enumerated.
 type ListOptions struct {

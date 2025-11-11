@@ -357,7 +357,7 @@ func parseCSV(arg string) []string {
 	return output
 }
 
-func eventMatchesFilters(event model.EventProvider, filters viewFilters) bool {
+func eventMatchesFilters(_ model.EventProvider, _ viewFilters) bool {
 	// TODO: Implement agent-agnostic filtering
 	// For now, accept all events when using generic interface
 	// Agent-specific filtering will be re-implemented later

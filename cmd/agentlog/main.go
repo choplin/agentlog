@@ -23,9 +23,7 @@ import (
 
 var version = "dev"
 
-var (
-	agentType string
-)
+var agentType string
 
 var rootCmd = &cobra.Command{
 	Use:     "agentlog",
@@ -400,19 +398,6 @@ func resolveSessionPath(parser model.Parser, arg, root string) (string, error) {
 	}
 
 	return store.FindSessionPath(parser, root, arg)
-}
-
-// Note: The old defaultSessionsDir() has been replaced by defaultSessionsDir(agentType) above
-
-func oldDefaultSessionsDir() string {
-	if dir := os.Getenv("AGENTLOG_SESSIONS_DIR"); dir != "" {
-		return dir
-	}
-	home, err := os.UserHomeDir()
-	if err != nil {
-		return ""
-	}
-	return filepath.Join(home, ".codex", "sessions")
 }
 
 func durationSeconds(start, end time.Time) int {

@@ -59,12 +59,12 @@ func writeSummariesJSON(w io.Writer, items []model.SessionSummaryProvider) error
 	output := make([]map[string]interface{}, len(items))
 	for i, item := range items {
 		output[i] = map[string]interface{}{
-			"id":              item.GetID(),
-			"path":            item.GetPath(),
-			"cwd":             item.GetCWD(),
-			"started_at":      item.GetStartedAt(),
-			"summary":         item.GetSummary(),
-			"message_count":   item.GetMessageCount(),
+			"id":               item.GetID(),
+			"path":             item.GetPath(),
+			"cwd":              item.GetCWD(),
+			"started_at":       item.GetStartedAt(),
+			"summary":          item.GetSummary(),
+			"message_count":    item.GetMessageCount(),
 			"duration_seconds": item.GetDurationSeconds(),
 		}
 	}

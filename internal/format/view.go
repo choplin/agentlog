@@ -98,15 +98,6 @@ func wrapBody(text string, width int) string {
 	return strings.Join(lines, "\n")
 }
 
-func contentValue(blocks []model.ContentBlock, expected string) string {
-	for _, block := range blocks {
-		if block.Type == expected {
-			return block.Text
-		}
-	}
-	return ""
-}
-
 func formatJSON(raw string) string {
 	if raw == "" {
 		return raw
