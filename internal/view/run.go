@@ -17,20 +17,16 @@ import (
 
 // Options defines the configurable parameters for rendering a view.
 type Options struct {
-	Path            string
-	Format          string
-	Wrap            int
-	MaxEvents       int
-	EntryTypeArg    string
-	ResponseTypeArg string
-	EventMsgTypeArg string
-	PayloadRoleArg  string
-	AllFilter       bool
-	ForceColor      bool
-	ForceNoColor    bool
-	RawFile         bool
-	Out             io.Writer
-	OutFile         *os.File
+	Path         string
+	Format       string
+	Wrap         int
+	MaxEvents    int
+	Level        string // "conversation" or "all"
+	ForceColor   bool
+	ForceNoColor bool
+	RawFile      bool
+	Out          io.Writer
+	OutFile      *os.File
 }
 
 // Run renders a session log according to the provided options.
@@ -43,9 +39,21 @@ func Run(parser model.Parser, opts Options) error {
 		return copyFile(opts.Out, opts.Path)
 	}
 
-	filters, err := buildViewFilters(opts.AllFilter, opts.EntryTypeArg, opts.ResponseTypeArg, opts.EventMsgTypeArg, opts.PayloadRoleArg)
-	if err != nil {
-		return err
+	// Normalize level to lowercase, default to "conversation"
+	level := strings.ToLower(opts.Level)
+	if level == "" {
+		level = "conversation"
+	}
+
+	// Validate level
+	showOnlyConversation := false
+	switch level {
+	case "conversation":
+		showOnlyConversation = true
+	case "all":
+		showOnlyConversation = false
+	default:
+		return fmt.Errorf("invalid level %q: must be 'conversation' or 'all'", opts.Level)
 	}
 
 	formatMode := strings.ToLower(opts.Format)
@@ -59,7 +67,8 @@ func Run(parser model.Parser, opts Options) error {
 
 	processEvents := func(fn func(model.EventProvider) error) error {
 		return parser.IterateEvents(opts.Path, func(event model.EventProvider) error {
-			if !eventMatchesFilters(event, filters) {
+			// Filter by conversation level
+			if showOnlyConversation && !event.IsConversation() {
 				return nil
 			}
 			return fn(event)
@@ -155,213 +164,6 @@ func Run(parser model.Parser, opts Options) error {
 	default:
 		return fmt.Errorf("unsupported format: %s", opts.Format)
 	}
-}
-
-type viewFilters struct {
-	// TODO: Implement agent-agnostic filtering
-	// For now, filters are disabled
-	entryTypes        map[string]struct{}
-	responseItemTypes map[string]struct{}
-	eventMsgTypes     map[string]struct{}
-	payloadRoles      map[string]struct{}
-}
-
-func buildViewFilters(allFilter bool, entryArg, responseTypeArg, eventMsgTypeArg, payloadRoleArg string) (viewFilters, error) {
-	var filters viewFilters
-
-	// If --all is specified, disable all filters
-	if allFilter {
-		return viewFilters{
-			entryTypes:        nil,
-			responseItemTypes: nil,
-			eventMsgTypes:     nil,
-			payloadRoles:      nil,
-		}, nil
-	}
-
-	entryFilter, entryProvided, err := parseEntryTypeArg(entryArg)
-	if err != nil {
-		return filters, err
-	}
-	responseTypeFilter, responseTypeProvided, err := parseResponseTypeArg(responseTypeArg)
-	if err != nil {
-		return filters, err
-	}
-	eventMsgTypeFilter, eventMsgTypeProvided, err := parseEventMsgTypeArg(eventMsgTypeArg)
-	if err != nil {
-		return filters, err
-	}
-	payloadRoleFilter, roleProvided, err := parsePayloadRoleArg(payloadRoleArg)
-	if err != nil {
-		return filters, err
-	}
-
-	if entryProvided {
-		filters.entryTypes = entryFilter
-	} else {
-		filters.entryTypes = map[string]struct{}{
-			"response_item": {},
-		}
-	}
-
-	if responseTypeProvided {
-		filters.responseItemTypes = responseTypeFilter
-	} else {
-		filters.responseItemTypes = map[string]struct{}{
-			"message": {},
-		}
-	}
-
-	if eventMsgTypeProvided {
-		filters.eventMsgTypes = eventMsgTypeFilter
-	} else {
-		// Default: no event_msg types (since EntryTypeEventMsg is excluded by default)
-		filters.eventMsgTypes = nil
-	}
-
-	if roleProvided {
-		filters.payloadRoles = payloadRoleFilter
-	} else {
-		filters.payloadRoles = map[string]struct{}{
-			"user":      {},
-			"assistant": {},
-		}
-	}
-
-	return filters, nil
-}
-
-func parseEntryTypeArg(arg string) (map[string]struct{}, bool, error) {
-	values := parseCSV(arg)
-	if len(values) == 0 {
-		return nil, false, nil
-	}
-	if len(values) == 1 && values[0] == "all" {
-		return nil, true, nil
-	}
-
-	// Valid entry types (agent-agnostic)
-	validTypes := map[string]bool{
-		"session_meta":  true,
-		"response_item": true,
-		"event_msg":     true,
-		"turn_context":  true,
-	}
-
-	set := make(map[string]struct{}, len(values))
-	for _, token := range values {
-		if !validTypes[token] {
-			return nil, true, fmt.Errorf("unknown entry type %q", token)
-		}
-		set[token] = struct{}{}
-	}
-	return set, true, nil
-}
-
-func parseResponseTypeArg(arg string) (map[string]struct{}, bool, error) {
-	values := parseCSV(arg)
-	if len(values) == 0 {
-		return nil, false, nil
-	}
-	if len(values) == 1 && values[0] == "all" {
-		return nil, true, nil
-	}
-
-	// Valid response types (agent-agnostic)
-	validTypes := map[string]bool{
-		"message":                 true,
-		"reasoning":               true,
-		"function_call":           true,
-		"function_call_output":    true,
-		"custom_tool_call":        true,
-		"custom_tool_call_output": true,
-	}
-
-	set := make(map[string]struct{}, len(values))
-	for _, token := range values {
-		if !validTypes[token] {
-			return nil, true, fmt.Errorf("unknown response type %q", token)
-		}
-		set[token] = struct{}{}
-	}
-	return set, true, nil
-}
-
-func parseEventMsgTypeArg(arg string) (map[string]struct{}, bool, error) {
-	values := parseCSV(arg)
-	if len(values) == 0 {
-		return nil, false, nil
-	}
-	if len(values) == 1 && values[0] == "all" {
-		return nil, true, nil
-	}
-
-	// Valid event_msg types (agent-agnostic)
-	validTypes := map[string]bool{
-		"token_count":     true,
-		"agent_reasoning": true,
-		"user_message":    true,
-		"agent_message":   true,
-		"turn_aborted":    true,
-	}
-
-	set := make(map[string]struct{}, len(values))
-	for _, token := range values {
-		if !validTypes[token] {
-			return nil, true, fmt.Errorf("unknown event_msg type %q", token)
-		}
-		set[token] = struct{}{}
-	}
-	return set, true, nil
-}
-
-func parsePayloadRoleArg(arg string) (map[string]struct{}, bool, error) {
-	values := parseCSV(arg)
-	if len(values) == 0 {
-		return nil, false, nil
-	}
-	if len(values) == 1 && values[0] == "all" {
-		return nil, true, nil
-	}
-
-	// Valid payload roles (agent-agnostic)
-	validRoles := map[string]bool{
-		"user":      true,
-		"assistant": true,
-		"tool":      true,
-		"system":    true,
-	}
-
-	set := make(map[string]struct{}, len(values))
-	for _, token := range values {
-		if !validRoles[token] {
-			return nil, true, fmt.Errorf("unknown payload role %q", token)
-		}
-		set[token] = struct{}{}
-	}
-	return set, true, nil
-}
-
-func parseCSV(arg string) []string {
-	if strings.TrimSpace(arg) == "" {
-		return nil
-	}
-	parts := strings.Split(arg, ",")
-	output := make([]string, 0, len(parts))
-	for _, part := range parts {
-		token := strings.TrimSpace(strings.ToLower(part))
-		if token != "" {
-			output = append(output, token)
-		}
-	}
-	return output
-}
-
-func eventMatchesFilters(_ model.EventProvider, _ viewFilters) bool {
-	// TODO: Implement agent-agnostic filtering
-	// For now, accept all events when using generic interface
-	// Agent-specific filtering will be re-implemented later
-	return true
 }
 
 type eventRing struct {

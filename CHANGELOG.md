@@ -9,11 +9,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 
-- Support for Claude Code session logs in addition to Codex CLI
+- Support for Claude Code session logs
 - `--agent` flag to specify agent type (`codex` or `claude`)
-- `AGENTLOG_AGENT` environment variable for default agent type selection
-- Parser interface for supporting multiple AI agent log formats
-- Factory pattern for creating agent-specific parsers
+- `AGENTLOG_AGENT` environment variable for default agent selection
+- `--level` flag for verbosity control (`conversation` or `all`)
+- Slash command detection and formatting in output
 
 ### Changed
 
@@ -25,6 +25,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Default sessions directory is now agent-specific (`~/.claude/projects` or `~/.codex/sessions`)
 - Internal architecture refactored to use agent-agnostic interfaces
 - Updated project description to reflect support for AI agent conversation logs in general
+
+### Removed
+
+- Codex-specific filter options (`--entry-type`, `--response-type`, `--event-msg-type`, `--payload-role`)
+- Complex filtering logic that was tightly coupled to Codex CLI internals
 
 ## [0.1.0] - 2025-11-06
 

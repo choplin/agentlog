@@ -96,6 +96,8 @@ type ClaudeEvent struct {
 	SessionID  string
 	CWD        string
 	Version    string
+	IsMeta     bool   // True for system-generated messages
+	UserType   string // "external" for real user messages
 
 	// Assistant-specific fields
 	MessageID string
@@ -132,4 +134,34 @@ func (e *ClaudeEvent) GetRole() string {
 		return e.Role
 	}
 	return string(e.Kind)
+}
+
+// IsConversation returns true if this event is part of the user/assistant conversation.
+// Returns false for system-generated meta messages, system events, summaries, file snapshots,
+// and messages containing only tool interactions (tool_use, tool_result).
+func (e *ClaudeEvent) IsConversation() bool {
+	// System-generated meta messages are not part of conversation
+	if e.IsMeta {
+		return false
+	}
+	// Only user and assistant messages can be conversation
+	if e.Kind != EntryTypeUser && e.Kind != EntryTypeAssistant {
+		return false
+	}
+	// Exclude messages that only contain tool interactions or slash commands
+	if len(e.Content) > 0 {
+		hasConversationContent := false
+		for _, block := range e.Content {
+			// Only text blocks are considered conversation content
+			// Exclude: tool_use, tool_result, slash_command, and other system blocks
+			if block.Type == "text" {
+				hasConversationContent = true
+				break
+			}
+		}
+		if !hasConversationContent {
+			return false
+		}
+	}
+	return true
 }

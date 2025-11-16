@@ -41,8 +41,12 @@ func renderBlocks(blocks []model.ContentBlock, wrapWidth int) string {
 	parts := make([]string, 0, len(blocks))
 	for _, block := range blocks {
 		switch block.Type {
+		case "slash_command":
+			text := formatSlashCommand(block.Text)
+			parts = append(parts, wrapBody(text, wrapWidth))
 		case "input_text", "output_text", "text", "summary_text":
-			parts = append(parts, wrapBody(strings.TrimSpace(block.Text), wrapWidth))
+			text := strings.TrimSpace(block.Text)
+			parts = append(parts, wrapBody(text, wrapWidth))
 		case "json":
 			parts = append(parts, formatJSON(block.Text))
 		case "function_name":
@@ -108,4 +112,40 @@ func formatJSON(raw string) string {
 		return buf.String()
 	}
 	return raw
+}
+
+// formatSlashCommand extracts and formats slash command information from XML-like tags.
+func formatSlashCommand(text string) string {
+	// Extract command name
+	commandName := extractTagContent(text, "command-name")
+	commandMessage := extractTagContent(text, "command-message")
+
+	if commandName != "" {
+		if commandMessage != "" {
+			return fmt.Sprintf("[Slash Command: %s] %s", commandName, commandMessage)
+		}
+		return fmt.Sprintf("[Slash Command: %s]", commandName)
+	}
+
+	// If we can't parse it cleanly, return as-is
+	return text
+}
+
+// extractTagContent extracts content between <tag> and </tag>.
+func extractTagContent(text, tag string) string {
+	startTag := "<" + tag + ">"
+	endTag := "</" + tag + ">"
+
+	startIdx := strings.Index(text, startTag)
+	if startIdx == -1 {
+		return ""
+	}
+	startIdx += len(startTag)
+
+	endIdx := strings.Index(text[startIdx:], endTag)
+	if endIdx == -1 {
+		return ""
+	}
+
+	return text[startIdx : startIdx+endIdx]
 }

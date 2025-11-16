@@ -182,18 +182,14 @@ func newListCmd() *cobra.Command {
 
 func newViewCmd() *cobra.Command {
 	var (
-		entryTypeArg    string
-		responseTypeArg string
-		eventMsgTypeArg string
-		payloadRoleArg  string
-		allFilter       bool
-		raw             bool
-		wrap            int
-		maxEvents       int
-		sessionsDir     string
-		formatFlag      string
-		forceColor      bool
-		forceNoColor    bool
+		level        string
+		raw          bool
+		wrap         int
+		maxEvents    int
+		sessionsDir  string
+		formatFlag   string
+		forceColor   bool
+		forceNoColor bool
 	)
 
 	cmd := &cobra.Command{
@@ -223,37 +219,24 @@ func newViewCmd() *cobra.Command {
 				return errors.New("--color and --no-color cannot be used together")
 			}
 
-			// Check for exclusive flag usage
-			if allFilter && (entryTypeArg != "" || responseTypeArg != "" || eventMsgTypeArg != "" || payloadRoleArg != "") {
-				return errors.New("--all cannot be used with -E, -T, -M, or -R flags")
-			}
-
 			outFile, _ := out.(*os.File)
 			return view.Run(parser, view.Options{
-				Path:            path,
-				Format:          formatFlag,
-				Wrap:            wrap,
-				MaxEvents:       maxEvents,
-				EntryTypeArg:    entryTypeArg,
-				ResponseTypeArg: responseTypeArg,
-				EventMsgTypeArg: eventMsgTypeArg,
-				PayloadRoleArg:  payloadRoleArg,
-				AllFilter:       allFilter,
-				ForceColor:      forceColor,
-				ForceNoColor:    forceNoColor,
-				RawFile:         raw,
-				Out:             out,
-				OutFile:         outFile,
+				Path:         path,
+				Format:       formatFlag,
+				Wrap:         wrap,
+				MaxEvents:    maxEvents,
+				Level:        level,
+				ForceColor:   forceColor,
+				ForceNoColor: forceNoColor,
+				RawFile:      raw,
+				Out:          out,
+				OutFile:      outFile,
 			})
 		},
 	}
 
 	flags := cmd.Flags()
-	flags.StringVarP(&entryTypeArg, "entry-type", "E", "", "comma-separated entry types to include (default: response_item)")
-	flags.StringVarP(&responseTypeArg, "response-type", "T", "", "comma-separated response_item payload types (default: message)")
-	flags.StringVarP(&eventMsgTypeArg, "event-msg-type", "M", "", "comma-separated event_msg payload types (default: none)")
-	flags.StringVarP(&payloadRoleArg, "payload-role", "R", "", "comma-separated payload roles to include (default: user,assistant; use 'all' for every role)")
-	flags.BoolVar(&allFilter, "all", false, "show all entries (overrides -E, -T, -M, and -R)")
+	flags.StringVar(&level, "level", "conversation", "verbosity level: conversation (default) or all")
 	flags.BoolVar(&raw, "raw", false, "output raw JSONL without formatting")
 	flags.IntVar(&wrap, "wrap", 0, "wrap message body at the given column width")
 	flags.IntVar(&maxEvents, "max", 0, "show only the most recent N events (0 means no limit)")

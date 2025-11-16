@@ -134,3 +134,10 @@ func (e *CodexEvent) GetRole() string {
 	}
 	return string(e.Kind)
 }
+
+// IsConversation returns true if this event is part of the user/assistant conversation.
+// Returns false for system messages, metadata, and internal events.
+func (e *CodexEvent) IsConversation() bool {
+	// Conversation: user and assistant response_item entries
+	return e.Kind == EntryTypeResponseItem && (e.Role == PayloadRoleUser || e.Role == PayloadRoleAssistant)
+}

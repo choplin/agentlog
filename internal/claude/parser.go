@@ -196,6 +196,8 @@ type rawEntry struct {
 	Message    json.RawMessage `json:"message"`
 	Summary    string          `json:"summary"`
 	LeafUUID   string          `json:"leafUuid"`
+	IsMeta     bool            `json:"isMeta"`
+	UserType   string          `json:"userType"`
 }
 
 type messagePayload struct {
@@ -247,6 +249,8 @@ func parseEvent(raw []byte) (ClaudeEvent, error) {
 		SessionID:  entry.SessionID,
 		CWD:        entry.CWD,
 		Version:    entry.Version,
+		IsMeta:     entry.IsMeta,
+		UserType:   entry.UserType,
 		Raw:        string(raw),
 	}
 
@@ -291,6 +295,14 @@ func decodeContent(raw json.RawMessage) []model.ContentBlock {
 	// Try as string first (simple message)
 	var asString string
 	if err := json.Unmarshal(raw, &asString); err == nil {
+		// Check if this is a slash command
+		if strings.Contains(asString, "<command-name>") && strings.Contains(asString, "</command-name>") {
+			return []model.ContentBlock{{Type: "slash_command", Text: asString}}
+		}
+		// Check if this is a local command output
+		if strings.Contains(asString, "<local-command-") || strings.Contains(asString, "<command-message>") {
+			return []model.ContentBlock{{Type: "system_message", Text: asString}}
+		}
 		return []model.ContentBlock{{Type: "text", Text: asString}}
 	}
 
