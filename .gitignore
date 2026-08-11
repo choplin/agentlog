@@ -1,0 +1,4 @@
+/.agents/
+/target/
+/.direnv/
+/dist/

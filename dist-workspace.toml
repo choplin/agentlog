@@ -1,0 +1,21 @@
+[workspace]
+members = ["cargo:."]
+
+[dist]
+cargo-dist-version = "0.31.0"
+packages = ["agentlog"]
+ci = "github"
+hosting = "github"
+installers = ["homebrew"]
+publish-jobs = ["homebrew"]
+tap = "choplin/homebrew-tap"
+pr-run-mode = "skip"
+tag-namespace = "v"
+source-tarball = false
+targets = [
+  "aarch64-apple-darwin",
+  "x86_64-apple-darwin",
+  "aarch64-unknown-linux-musl",
+  "x86_64-unknown-linux-musl",
+]
+checksum = "sha256"
